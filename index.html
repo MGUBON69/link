@@ -16,12 +16,11 @@
     <div class="card form-card p-4 bg-white">
         <h3 class="text-center mb-4 text-primary">ฟอร์มส่งลิงค์ประจำเดือน</h3>
         
-        <!-- 📌 ส่ง Form ตรงไปยัง Apps Script โดยยิงผลลัพธ์ไปที่ hidden_iframe -->
-        <form id="salesForm" action="https://script.google.com/macros/s/AKfycbyQ_ojEFCAYgygpM4HRvX81hlEZ8J3xM76yhjyDuxVhz-txnL78bK8hJjV_kCYTmByUsQ/exec" method="POST" target="hidden_iframe">
+        <!-- 📌 วาง Web App URL ตัวใหม่ที่คัดลอกมาในช่อง action="..." ด้านล่างนี้ -->
+        <form id="salesForm" action="วาง_WEB_APP_URL_ใหม่ตรงนี้" method="POST" target="hidden_iframe">
             
             <div class="mb-3">
                 <label for="salesName" class="form-label">ชื่อเซลล์ <span class="text-danger">*</span></label>
-                <!-- 📌 attribute 'name' สำคัญมาก ต้องตรงกับ e.parameter ใน Apps Script -->
                 <input type="text" class="form-control" name="salesName" id="salesName" required placeholder="เช่น สมชาย ใจดี">
             </div>
 
@@ -63,7 +62,7 @@
     </div>
 </div>
 
-<!-- 📌 Hidden Iframe สำหรับรับ Response โดยไม่รีเฟรชหน้าเว็บ -->
+<!-- Hidden Iframe สำหรับรองรับการส่งฟอร์มข้ามโดเมน -->
 <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;"></iframe>
 
 <script>
@@ -79,7 +78,6 @@
         statusMsg.style.display = 'none';
     });
 
-    // เมื่อ Iframe โหลดเสร็จ (แปลว่า Google Apps Script ประมวลผลเสร็จแล้ว)
     document.getElementById('hidden_iframe').addEventListener('load', function() {
         if (isSubmitting) {
             const submitBtn = document.getElementById('submitBtn');
