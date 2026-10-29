@@ -51,7 +51,7 @@
                             <option value="ดรีม">ดรีม</option>
                             <option value="เบิร์ท">เบิร์ท</option>
                             <option value="ต้อม">ต้อม</option>
-                            <option value="เอิร์ท">เอิร์ท</option>
+                            <option value="เอิร์ธ">เอิร์ธ</option>
                             <option value="ปูนิ่ม">ปูนิ่ม</option>
                         </select>
                     </div>
@@ -225,7 +225,7 @@
         
         document.getElementById('totalSubmissions').innerText = totalCount;
 
-        const salesList = ['ดรีม', 'เบิร์ท', 'ต้อม', 'เอิร์ท', 'ปูนิ่ม'];
+        const salesList = ['ดรีม', 'เบิร์ท', 'ต้อม', 'เอิร์ธ', 'ปูนิ่ม'];
         let activeSales = 0;
         salesList.forEach(name => {
             if ((stats[name] || 0) > 0) activeSales++;
