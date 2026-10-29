@@ -41,10 +41,9 @@
             <div class="tab-pane fade show active" id="form-pane" role="tabpanel">
                 <h4 class="text-center mb-4 text-primary fw-bold">ฟอร์มส่งลิงค์ประจำเดือน</h4>
                 
-                <!-- 📌 วาง Web App URL ตัวใหม่ใน action="..." -->
                 <form id="salesForm" action="https://script.google.com/macros/s/AKfycbwHNaxR9h_4S4WiyFdaioJZRGKOo3Vd5qK6nh510Z4VzG3ht0jpfa6prNLOfY3SJApb/exec" method="POST" target="hidden_iframe">
                     
-                    <!-- ช่องชื่อเซลล์ (เลือกจาก 5 รายชื่อ) -->
+                    <!-- ช่องชื่อเซลล์ -->
                     <div class="mb-3">
                         <label for="salesName" class="form-label fw-semibold">ชื่อเซลล์ <span class="text-danger">*</span></label>
                         <select class="form-select" name="salesName" id="salesName" required>
@@ -157,16 +156,14 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    // 📌 ใส่ Web App URL ตัวเดียวกันที่นี่ด้วยนะคระ
-    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwycEQDIFvrIvnVHM6XkGqonYtZ_fRnZdSTbi05qvK4afHolQTekPEfBnnQjIjzZw58/exec";
+    // 📌 URL ของ Apps Script ตัวใหม่
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwHNaxR9h_4S4WiyFdaioJZRGKOo3Vd5qK6nh510Z4VzG3ht0jpfa6prNLOfY3SJApb/exec";
     let isSubmitting = false;
 
-    // โหลดข้อมูลแดชบอร์ดอัตโนมัติเมื่อเปิดหน้าเว็บ
     document.addEventListener('DOMContentLoaded', function() {
         fetchDashboardData();
     });
 
-    // เมื่อเริ่มส่งฟอร์ม
     document.getElementById('salesForm').addEventListener('submit', function() {
         const submitBtn = document.getElementById('submitBtn');
         const statusMsg = document.getElementById('statusMessage');
@@ -177,7 +174,6 @@
         statusMsg.style.display = 'none';
     });
 
-    // เมื่อ Iframe ได้รับ Response กลับมา (แปลว่าบันทึกลง Sheet สำเร็จแล้ว)
     document.getElementById('hidden_iframe').addEventListener('load', function() {
         if (isSubmitting) {
             const submitBtn = document.getElementById('submitBtn');
@@ -192,55 +188,69 @@
             submitBtn.innerText = 'บันทึกข้อมูล';
             isSubmitting = false;
 
-            // ดึงข้อมูลใหม่จาก Google Sheets มาอัปเดตแดชบอร์ดทันที
             setTimeout(fetchDashboardData, 1000);
         }
     });
 
-    // ฟังก์ชันดึงข้อมูลแบบ Real-time จาก Google Apps Script (doGet)
+    // 📌 ดึงข้อมูลผ่านเทคนิค Script Tag (แก้ปัญหา CORS บล็อก 100%)
     function fetchDashboardData() {
         const tableBody = document.getElementById('dashboardTableBody');
         tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-3"><i class="fa-solid fa-spinner fa-spin me-2"></i>กำลังดึงข้อมูลล่าสุด...</td></tr>`;
 
-        fetch(WEB_APP_URL)
-            .then(response => response.json())
-            .then(data => {
-                const stats = data.stats || {};
-                const totalCount = data.totalSubmissions || 0;
-                
-                document.getElementById('totalSubmissions').innerText = totalCount;
+        // ลบ script เก่าออกก่อน
+        const oldScript = document.getElementById('jsonp-dashboard-script');
+        if (oldScript) oldScript.remove();
 
-                const salesList = ['ดรีม', 'เบิร์ท', 'ต้อม', 'เอิร์ท', 'ปูนิ่ม'];
-                let activeSales = 0;
-                salesList.forEach(name => {
-                    if ((stats[name] || 0) > 0) activeSales++;
-                });
-                document.getElementById('activeSalesCount').innerText = activeSales;
+        // สร้าง script ใหม่เรียก callback
+        const script = document.createElement('script');
+        script.id = 'jsonp-dashboard-script';
+        script.src = `${WEB_APP_URL}?callback=renderDashboard`;
+        script.onerror = function() {
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-3">เกิดข้อผิดพลาดในการดึงข้อมูลจาก Google Sheets</td></tr>`;
+        };
+        document.body.appendChild(script);
+    }
 
-                tableBody.innerHTML = '';
-                salesList.forEach(name => {
-                    const count = stats[name] || 0;
-                    const percentage = totalCount > 0 ? ((count / totalCount) * 100).toFixed(0) : 0;
+    // 📌 Callback Function รับค่าข้อมูลจาก Apps Script
+    function renderDashboard(data) {
+        const tableBody = document.getElementById('dashboardTableBody');
+        
+        if (!data || data.result === 'error') {
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-3">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
+            return;
+        }
 
-                    const row = `
-                        <tr>
-                            <td class="fw-bold text-secondary">${name}</td>
-                            <td class="text-center fw-bold fs-5">${count}</td>
-                            <td style="width: 40%;">
-                                <div class="progress" style="height: 10px;">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: ${percentage}%"></div>
-                                </div>
-                                <small class="text-muted">${percentage}%</small>
-                            </td>
-                        </tr>
-                    `;
-                    tableBody.innerHTML += row;
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching dashboard data:', error);
-                tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-3">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
-            });
+        const stats = data.stats || {};
+        const totalCount = data.totalSubmissions || 0;
+        
+        document.getElementById('totalSubmissions').innerText = totalCount;
+
+        const salesList = ['ดรีม', 'เบิร์ท', 'ต้อม', 'เอิร์ท', 'ปูนิ่ม'];
+        let activeSales = 0;
+        salesList.forEach(name => {
+            if ((stats[name] || 0) > 0) activeSales++;
+        });
+        document.getElementById('activeSalesCount').innerText = activeSales;
+
+        tableBody.innerHTML = '';
+        salesList.forEach(name => {
+            const count = stats[name] || 0;
+            const percentage = totalCount > 0 ? ((count / totalCount) * 100).toFixed(0) : 0;
+
+            const row = `
+                <tr>
+                    <td class="fw-bold text-secondary">${name}</td>
+                    <td class="text-center fw-bold fs-5">${count}</td>
+                    <td style="width: 40%;">
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: ${percentage}%"></div>
+                        </div>
+                        <small class="text-muted">${percentage}%</small>
+                    </td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+        });
     }
 </script>
 
