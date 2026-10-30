@@ -8,12 +8,17 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Sarabun -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
     <style>
         body { background-color: #f4f6f9; font-family: 'Sarabun', sans-serif; }
         .main-card { max-width: 800px; margin: 30px auto; border-radius: 16px; border: none; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
-        .nav-pills .nav-link { font-weight: 600; color: #555; border-radius: 10px; padding: 10px 24px; }
-        .nav-pills .nav-link.active { background-color: #0d6efd; color: white; }
-        .stat-card { border-radius: 12px; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+        .nav-pills .nav-link { font-weight: 600; color: #555; border-radius: 10px; padding: 10px 24px; transition: all 0.3s; }
+        .nav-pills .nav-link.active { background-color: #0d6efd; color: white; box-shadow: 0 4px 10px rgba(13, 110, 253, 0.3); }
+        .nav-pills .nav-link:hover:not(.active) { background-color: #e9ecef; }
+        .stat-card { border-radius: 12px; border: none; box-shadow: 0 4px 10px rgba(0,0,0,0.03); transition: transform 0.2s; }
+        .stat-card:hover { transform: translateY(-3px); }
     </style>
 </head>
 <body>
@@ -89,18 +94,20 @@
                         <input type="url" class="form-control" name="linkUrl" id="linkUrl" required placeholder="https://example.com/mypath">
                     </div>
 
-                    <button type="submit" id="submitBtn" class="btn btn-primary w-100 py-2 fs-6 fw-bold">บันทึกข้อมูล</button>
+                    <button type="submit" id="submitBtn" class="btn btn-primary w-100 py-2 fs-6 fw-bold">
+                        <i class="fa-solid fa-save me-2"></i>บันทึกข้อมูล
+                    </button>
                 </form>
 
                 <!-- แสดงสถานะการส่ง -->
-                <div id="statusMessage" class="mt-3 text-center" style="display:none;"></div>
+                <div id="statusMessage" class="mt-3 text-center fw-semibold" style="display:none;"></div>
             </div>
 
 
             <!-- ================= PAGE 2: แดชบอร์ด Real-time ================= -->
             <div class="tab-pane fade" id="dashboard-pane" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="text-primary fw-bold mb-0">แดชบอร์ดสรุปการส่งลิงก์ (Real-time)</h4>
+                    <h4 class="text-primary fw-bold mb-0">แดชบอร์ดสรุปการส่งลิงก์</h4>
                     <button class="btn btn-sm btn-outline-primary" onclick="fetchDashboardData()">
                         <i class="fa-solid fa-rotate-right me-1"></i>รีเฟรชข้อมูล
                     </button>
@@ -110,13 +117,13 @@
                 <div class="row g-3 mb-4">
                     <div class="col-6">
                         <div class="card stat-card bg-primary text-white p-3 text-center">
-                            <small>การส่งลิงก์ทั้งหมด</small>
+                            <small class="text-white-50">การส่งลิงก์ทั้งหมด</small>
                             <h2 class="fw-bold mb-0" id="totalSubmissions">-</h2>
                         </div>
                     </div>
                     <div class="col-6">
                         <div class="card stat-card bg-success text-white p-3 text-center">
-                            <small>จำนวนผู้ส่งทั้งหมด</small>
+                            <small class="text-white-50">จำนวนผู้ส่งทั้งหมด</small>
                             <h2 class="fw-bold mb-0" id="activeSalesCount">-</h2>
                         </div>
                     </div>
@@ -152,71 +159,82 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-    // 📌 URL ของ Apps Script ตัวใหม่ของคุณชินอิจิ
+    // 📌 URL ของ Apps Script (ตรวจสอบให้แน่ใจว่าคัดลอกมาจาก Deployment ล่าสุด)
     const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxCNuPE5WIrcv4HHPPDuU9i7ja5SgqoaWvtwApUpGratZNu8UbtPC1VA_f1O3l1XiH9/exec";
 
-    // จัดการการส่งฟอร์มผ่าน AJAX Fetch (แก้ปัญหา iframe ส่งไม่เข้า)
+    // ================= จัดการการส่งฟอร์ม =================
     document.getElementById('salesForm').addEventListener('submit', function(e) {
         e.preventDefault(); // ป้องกันหน้าเว็บรีเฟรช
 
         const submitBtn = document.getElementById('submitBtn');
         const statusMsg = document.getElementById('statusMessage');
-
-        submitBtn.disabled = true;
-        submitBtn.innerText = 'กำลังบันทึกข้อมูล...';
-        statusMsg.style.display = 'none';
-
-        // เตรียมข้อมูลส่งไปยัง Apps Script
         const formData = new FormData(this);
 
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i>กำลังบันทึกข้อมูล...';
+        statusMsg.style.display = 'none';
+
+        // ส่งข้อมูลแบบปกติ (ลบ no-cors ออก เพื่อให้รู้ผลจริงว่าสำเร็จหรือล้มเหลว)
         fetch(WEB_APP_URL, {
             method: 'POST',
-            body: formData,
-            mode: 'no-cors' // ข้ามข้อจำกัด CORS สำหรับการส่งข้อมูลเข้า Google Sheets
+            body: formData
         })
-        .then(() => {
-            statusMsg.className = 'mt-3 text-center alert alert-success';
-            statusMsg.innerText = '✅ บันทึกข้อมูลเรียบร้อยแล้ว!';
-            statusMsg.style.display = 'block';
-
-            document.getElementById('salesForm').reset();
-            submitBtn.disabled = false;
-            submitBtn.innerText = 'บันทึกข้อมูล';
+        .then(response => response.json())
+        .then(data => {
+            console.log("✅ Response จาก Server:", data); // เช็คค่าที่ส่งกลับมาใน Console
+            
+            if (data.result === "success") {
+                statusMsg.className = 'mt-3 text-center alert alert-success';
+                statusMsg.innerHTML = '<i class="fa-solid fa-circle-check me-2"></i>บันทึกข้อมูลเรียบร้อยแล้ว!';
+                statusMsg.style.display = 'block';
+                document.getElementById('salesForm').reset();
+            } else {
+                throw new Error(data.message || "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุจากเซิร์ฟเวอร์");
+            }
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('❌ Error:', error);
             statusMsg.className = 'mt-3 text-center alert alert-danger';
-            statusMsg.innerText = '❌ เกิดข้อผิดพลาดในการส่งข้อมูล กรุณาลองใหม่อีกครั้ง';
+            statusMsg.innerHTML = `<i class="fa-solid fa-circle-exclamation me-2"></i>เกิดข้อผิดพลาด: ${error.message}<br><small class="text-muted">กรุณาตรวจสอบว่า Deploy เป็น "เวอร์ชันใหม่" และสิทธิ์เป็น "ทุกคน"</small>`;
             statusMsg.style.display = 'block';
-
+        })
+        .finally(() => {
             submitBtn.disabled = false;
-            submitBtn.innerText = 'บันทึกข้อมูล';
+            submitBtn.innerHTML = '<i class="fa-solid fa-save me-2"></i>บันทึกข้อมูล';
         });
     });
 
-    // 📌 ดึงข้อมูลแดชบอร์ดผ่าน Script Tag (JSONP)
+    // ================= ดึงข้อมูลแดชบอร์ด (JSONP) =================
     function fetchDashboardData() {
         const tableBody = document.getElementById('dashboardTableBody');
         tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-3"><i class="fa-solid fa-spinner fa-spin me-2"></i>กำลังดึงข้อมูลล่าสุด...</td></tr>`;
 
+        // ลบ script เก่าออกก่อนเพื่อป้องกันการซ้ำซ้อน
         const oldScript = document.getElementById('jsonp-dashboard-script');
         if (oldScript) oldScript.remove();
 
+        // สร้าง script ใหม่เพื่อดึงข้อมูล
         const script = document.createElement('script');
         script.id = 'jsonp-dashboard-script';
-        script.src = `${WEB_APP_URL}?callback=renderDashboard`;
+        // เพิ่ม timestamp (t) เพื่อป้องกัน Browser จำค่าเก่า (Cache)
+        script.src = `${WEB_APP_URL}?callback=renderDashboard&t=${new Date().getTime()}`;
+        
         script.onerror = function() {
-            tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-3">เกิดข้อผิดพลาดในการเชื่อมต่อกับ Google Sheets</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-3"><i class="fa-solid fa-triangle-exclamation me-2"></i>เกิดข้อผิดพลาดในการเชื่อมต่อกับ Google Sheets<br><small>ตรวจสอบ URL หรือ การ Deploy</small></td></tr>`;
         };
+        
         document.body.appendChild(script);
     }
 
-    // 📌 Callback Function สำหรับแสดงผลแดชบอร์ด
+    // ================= Callback Function สำหรับแสดงผล =================
     function renderDashboard(data) {
+        console.log("📊 ข้อมูลที่ได้รับจาก Google Sheets:", data); // <-- จุดเช็คสำคัญ! กด F12 ดูตรงนี้
+
         const tableBody = document.getElementById('dashboardTableBody');
         
         if (!data || data.result === 'error') {
-            tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-3">เกิดข้อผิดพลาดในการโหลดข้อมูล</td></tr>`;
+            const errorMsg = data ? data.message : "ไม่ได้รับข้อมูล";
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger py-3"><i class="fa-solid fa-circle-xmark me-2"></i>เกิดข้อผิดพลาด: ${errorMsg}</td></tr>`;
             return;
         }
 
@@ -227,12 +245,23 @@
 
         const salesList = ['ดรีม', 'เบิร์ท', 'ต้อม', 'เอิร์ธ', 'ปูนิ่ม'];
         let activeSales = 0;
+        
+        // นับจำนวนคนที่มีการส่งข้อมูลจริง
         salesList.forEach(name => {
             if ((stats[name] || 0) > 0) activeSales++;
         });
         document.getElementById('activeSalesCount').innerText = activeSales;
 
+        // ล้างตารางเก่า
         tableBody.innerHTML = '';
+        
+        // ถ้าไม่มีข้อมูลเลย
+        if (totalCount === 0) {
+            tableBody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-3"><i class="fa-solid fa-inbox me-2"></i>ยังไม่มีข้อมูลการส่งลิงก์</td></tr>`;
+            return;
+        }
+
+        // สร้างแถวตาราง
         salesList.forEach(name => {
             const count = stats[name] || 0;
             const percentage = totalCount > 0 ? ((count / totalCount) * 100).toFixed(0) : 0;
